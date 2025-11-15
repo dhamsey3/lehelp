@@ -6,8 +6,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && \
+# Install dependencies (use install since no lock file in subdirectory)
+RUN npm install --production && \
     npm cache clean --force
 
 # Copy source code
@@ -27,7 +27,7 @@ RUN addgroup -g 1001 -S nodejs && \
 
 # Copy package files and install production dependencies only
 COPY package*.json ./
-RUN npm ci --only=production && \
+RUN npm install --production && \
     npm cache clean --force
 
 # Copy built application from builder
