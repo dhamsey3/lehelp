@@ -1,0 +1,86 @@
+# Dependencies
+node_modules/
+*/node_modules/
+venv/
+env/
+.Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+!.env.example
+
+# Build outputs
+dist/
+build/
+*.log
+*.pid
+*.seed
+*.pid.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+coverage/
+.nyc_output/
+*.coverage
+.pytest_cache/
+
+# Secrets and keys
+*.pem
+*.key
+*.crt
+secrets/
+keys/
+credentials/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+data/
+postgres-data/
+mongo-data/
+redis-data/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# AI/ML
+models/
+*.h5
+*.pkl
+*.joblib
+checkpoints/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Docker
+.docker/
+
+# Sensitive documents
+uploads/
+documents/
+attachments/

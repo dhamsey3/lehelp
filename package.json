@@ -1,0 +1,89 @@
+{
+  "name": "lehelp-platform",
+  "version": "1.0.0",
+  "description": "Human Rights Legal Aid Platform - Secure platform connecting lawyers with vulnerable individuals",
+  "main": "index.js",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend/api-gateway && npm run dev",
+    "dev:frontend": "cd frontend/client-portal && npm run dev",
+    "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:ai\"",
+    "dev:ai": "cd ai-services && python main.py",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "npm run --workspaces build",
+    "build:frontend": "cd frontend && npm run build",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "jest --coverage",
+    "test:integration": "jest --config jest.integration.config.js",
+    "test:e2e": "playwright test",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "typecheck": "tsc --noEmit",
+    "migrate": "cd backend/api-gateway && npm run migrate",
+    "migrate:rollback": "cd backend/api-gateway && npm run migrate:rollback",
+    "seed": "cd backend/api-gateway && npm run seed",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "security:audit": "npm audit && npm run security:check",
+    "security:check": "snyk test",
+    "prepare": "husky install"
+  },
+  "workspaces": [
+    "backend/*",
+    "frontend/*",
+    "mobile/*",
+    "shared/*"
+  ],
+  "keywords": [
+    "human-rights",
+    "legal-aid",
+    "case-management",
+    "secure-platform",
+    "ai-matching",
+    "encrypted-communications"
+  ],
+  "author": "LEHELP Development Team",
+  "license": "AGPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lehelp/platform.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lehelp/platform/issues"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "concurrently": "^8.2.0",
+    "eslint": "^8.45.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-security": "^1.7.1",
+    "husky": "^8.0.3",
+    "jest": "^29.6.0",
+    "lint-staged": "^13.2.3",
+    "prettier": "^3.0.0",
+    "snyk": "^1.1200.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.1.6"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  }
+}

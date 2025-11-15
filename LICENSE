@@ -1,0 +1,44 @@
+GNU AFFERO GENERAL PUBLIC LICENSE
+Version 3, 19 November 2007
+
+Copyright (C) 2024 LEHELP Platform Contributors
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+---
+
+ADDITIONAL TERMS
+
+Network Use Provision:
+If you run a modified version of this software as a network service,
+you must make the complete source code of your modified version
+available to users of that service.
+
+Privacy Protection:
+Any deployment of this software must maintain the privacy and security
+protections defined in the SECURITY.md file, particularly:
+- End-to-end encryption for communications
+- Anonymous access options for vulnerable users
+- Data minimization principles
+- GDPR and CCPA compliance
+
+Human Rights Commitment:
+This software is designed to support human rights work. Any use of this
+software must not violate human rights principles or be used to harm
+vulnerable individuals or communities.
+
+---
+
+For the full text of the GNU Affero General Public License v3.0, see:
+https://www.gnu.org/licenses/agpl-3.0.en.html

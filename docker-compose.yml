@@ -1,0 +1,144 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: lehelp_postgres
+    environment:
+      POSTGRES_DB: lehelp_db
+      POSTGRES_USER: lehelp_user
+      POSTGRES_PASSWORD: dev_password_change_in_prod
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lehelp_user -d lehelp_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lehelp_network
+
+  # MongoDB for document storage
+  mongodb:
+    image: mongo:6
+    container_name: lehelp_mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: lehelp_mongo_user
+      MONGO_INITDB_ROOT_PASSWORD: dev_password_change_in_prod
+      MONGO_INITDB_DATABASE: lehelp_docs
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lehelp_network
+
+  # Redis for caching and sessions
+  redis:
+    image: redis:7-alpine
+    container_name: lehelp_redis
+    command: redis-server
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lehelp_network
+
+  # Elasticsearch for search functionality
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.9.0
+    container_name: lehelp_elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - lehelp_network
+
+  # RabbitMQ for message queue
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: lehelp_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: lehelp_queue_user
+      RABBITMQ_DEFAULT_PASS: dev_password_change_in_prod
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lehelp_network
+
+  # MinIO for S3-compatible object storage (development)
+  minio:
+    image: minio/minio
+    container_name: lehelp_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - lehelp_network
+
+  # MailHog for email testing (development)
+  mailhog:
+    image: mailhog/mailhog
+    container_name: lehelp_mailhog
+    ports:
+      - "1025:1025"  # SMTP server
+      - "8025:8025"  # Web UI
+    networks:
+      - lehelp_network
+
+volumes:
+  postgres_data:
+  mongo_data:
+  redis_data:
+  elasticsearch_data:
+  rabbitmq_data:
+  minio_data:
+
+networks:
+  lehelp_network:
+    driver: bridge
