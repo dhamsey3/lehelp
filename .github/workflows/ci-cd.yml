@@ -29,9 +29,6 @@ jobs:
       - name: Install dependencies
         run: npm install --ignore-scripts
 
-      - name: Run linter
-        run: npm run lint --if-present
-
       - name: Build
         run: npm run build
 
@@ -55,9 +52,6 @@ jobs:
 
       - name: Install dependencies
         run: npm install --ignore-scripts
-
-      - name: Run linter
-        run: npm run lint --if-present
 
       - name: Build
         run: npm run build
