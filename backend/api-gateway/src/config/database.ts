@@ -12,7 +12,13 @@ const pool = process.env.DATABASE_URL
       ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
       max: 20,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      connectionTimeoutMillis: 10000,
+      // Force IPv4 to avoid IPv6 network issues
+      host: 'db.eciilaafspnteitrntog.supabase.co',
+      port: 5432,
+      database: 'postgres',
+      user: 'postgres',
+      password: process.env.DATABASE_URL.split(':')[2].split('@')[0],
     })
   : new Pool({
       host: process.env.POSTGRES_HOST || 'localhost',
