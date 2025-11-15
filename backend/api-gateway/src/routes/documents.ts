@@ -37,7 +37,7 @@ const upload = multer({
 // GET /api/v1/documents - List documents
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     
     const result = await pool.query(
       `SELECT 
@@ -72,7 +72,7 @@ router.post('/', authenticate, upload.single('file'), async (req: AuthRequest, r
       });
     }
 
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
     const { caseId, category } = req.body;
     
     // Generate unique storage key
@@ -127,7 +127,7 @@ router.post('/', authenticate, upload.single('file'), async (req: AuthRequest, r
 router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
 
     // Get document metadata and verify access
     const result = await pool.query(
@@ -189,7 +189,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
 router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.userId;
+    const userId = req.user?.id;
 
     // Get document and verify ownership
     const result = await pool.query(

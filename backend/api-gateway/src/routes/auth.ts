@@ -106,7 +106,7 @@ router.post('/register', async (req: Request, res: Response) => {
         permissions: getPermissionsByRole(role),
       },
       jwtSecret,
-      { expiresIn: process.env.JWT_EXPIRATION || '24h' }
+      { expiresIn: process.env.JWT_EXPIRATION || '24h' } as jwt.SignOptions
     );
 
     res.status(201).json({
@@ -194,14 +194,15 @@ router.post('/login', async (req: Request, res: Response) => {
         permissions: getPermissionsByRole(user.role),
       },
       jwtSecret,
-      { expiresIn: process.env.JWT_EXPIRATION || '24h' }
+      { expiresIn: process.env.JWT_EXPIRATION || '24h' } as jwt.SignOptions
     );
 
     // Generate refresh token
+    const refreshSecret = process.env.REFRESH_TOKEN_SECRET!;
     const refreshToken = jwt.sign(
-      { id: user.id },
-      process.env.REFRESH_TOKEN_SECRET!,
-      { expiresIn: process.env.REFRESH_TOKEN_EXPIRATION || '7d' }
+      { id: user.id, type: 'refresh' },
+      refreshSecret,
+      { expiresIn: process.env.REFRESH_TOKEN_EXPIRATION || '7d' } as jwt.SignOptions
     );
 
     // Store refresh token in Redis
@@ -280,13 +281,13 @@ router.post('/refresh', async (req: Request, res: Response) => {
     const jwtSecret = process.env.JWT_SECRET!;
     const newToken = jwt.sign(
       {
-        id: user.id,
+        id: decoded.id,
         email: user.email,
         role: user.role,
         permissions: getPermissionsByRole(user.role),
       },
       jwtSecret,
-      { expiresIn: process.env.JWT_EXPIRATION || '24h' }
+      { expiresIn: process.env.JWT_EXPIRATION || '24h' } as jwt.SignOptions
     );
 
     res.json({
