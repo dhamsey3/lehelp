@@ -5,17 +5,19 @@ import { logger } from '../utils/logger';
 dotenv.config();
 
 // PostgreSQL connection pool
-// Use Supabase connection pooler with IPv4 for Railway compatibility
+// Use direct Supabase connection
 const pool = new Pool({
-  host: 'aws-0-ap-southeast-1.pooler.supabase.com',
+  host: 'db.eciilaafspnteitrntog.supabase.co',
   port: 5432,
   database: 'postgres',
-  user: 'postgres.eciilaafspnteitrntog',
+  user: 'postgres',
   password: '+PAU-.sC_@y7jRy',
   ssl: { rejectUnauthorized: false },
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
+  // Force IPv4 family
+  options: '-c search_path=public',
 });
 
 export { pool };
