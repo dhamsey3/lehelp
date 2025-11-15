@@ -1,6 +1,14 @@
 import rateLimit from 'express-rate-limit';
 import RedisStore from 'rate-limit-redis';
-import { redisClient } from '../config/redis';
+import { getRedisClient } from '../config/redis';
+
+let redisClient: any;
+try {
+  redisClient = getRedisClient();
+} catch (e) {
+  // Redis not initialized yet, will use memory store
+  redisClient = null;
+}
 
 // Aggressive rate limiting for authentication endpoints
 export const authLimiter = rateLimit({
