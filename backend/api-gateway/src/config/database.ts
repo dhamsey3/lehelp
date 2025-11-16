@@ -5,19 +5,19 @@ import { logger } from '../utils/logger';
 dotenv.config();
 
 // PostgreSQL connection pool
-// Use direct Supabase connection
+// Use DATABASE_URL environment variable
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error('DATABASE_URL environment variable is not set');
+}
+
 const pool = new Pool({
-  host: 'db.eciilaafspnteitrntog.supabase.co',
-  port: 5432,
-  database: 'postgres',
-  user: 'postgres',
-  password: '+PAU-.sC_@y7jRy',
-  ssl: { rejectUnauthorized: false },
+  connectionString,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
-  // Force IPv4 family
-  options: '-c search_path=public',
 });
 
 export { pool };
