@@ -202,9 +202,13 @@ router.post('/login', async (req: Request, res: Response, next) => {
       { expiresIn: process.env.REFRESH_TOKEN_EXPIRATION || '7d' } as jwt.SignOptions
     );
 
-    // Store refresh token in Redis
-    const redis = getRedisClient();
-    await redis.set(`refresh_token:${user.id}`, refreshToken, { EX: 7 * 24 * 3600 });
+    // Store refresh token in Redis (optional - if not available, will use DB in future)
+    try {
+      const redis = getRedisClient();
+      await redis.set(`refresh_token:${user.id}`, refreshToken, { EX: 7 * 24 * 3600 });
+    } catch (redisError) {
+      logger.warn('Redis unavailable for token storage, continuing without distributed sessions');
+    }
 
     // Update last login
     await pool.query(
@@ -253,12 +257,16 @@ router.post('/refresh', async (req: Request, res: Response, next) => {
     const refreshSecret = process.env.REFRESH_TOKEN_SECRET!;
     const decoded = jwt.verify(refreshToken, refreshSecret) as { id: string };
 
-    // Verify token exists in Redis
-    const redis = getRedisClient();
-    const storedToken = await redis.get(`refresh_token:${decoded.id}`);
-    
-    if (!storedToken || storedToken !== refreshToken) {
-      throw new AuthenticationError('Invalid or expired refresh token');
+    // Verify token exists in Redis (optional - if Redis unavailable, skip Redis check)
+    try {
+      const redis = getRedisClient();
+      const storedToken = await redis.get(`refresh_token:${decoded.id}`);
+      
+      if (!storedToken || storedToken !== refreshToken) {
+        throw new AuthenticationError('Invalid or expired refresh token');
+      }
+    } catch (redisError) {
+      logger.warn('Redis unavailable, skipping stored token verification');
     }
 
     // Retrieve user from database
@@ -313,9 +321,13 @@ router.post('/logout', async (req: Request, res: Response, next) => {
       const decoded = jwt.decode(token) as { id?: string };
       
       if (decoded?.id) {
-        // Remove refresh token from Redis
-        const redis = getRedisClient();
-        await redis.del(`refresh_token:${decoded.id}`);
+        // Remove refresh token from Redis (optional)
+        try {
+          const redis = getRedisClient();
+          await redis.del(`refresh_token:${decoded.id}`);
+        } catch (redisError) {
+          logger.warn('Redis unavailable for logout, continuing without session cleanup');
+        }
       }
     }
     

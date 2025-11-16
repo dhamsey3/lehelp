@@ -1,32 +1,21 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
-
-interface User {
-  id: string;
-  email: string;
-  role: string;
-  displayName?: string;
-  anonymous?: boolean;
-}
+import { User, UserRole, LoginCredentials, RegisterData } from '../types/user.types';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
 }
 
-interface RegisterData {
-  email?: string;
-  password: string;
-  role: string;
-  anonymous?: boolean;
-  displayName?: string;
-}
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Configure axios defaults
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://lehelp-backend.onrender.com';
+axios.defaults.baseURL = API_BASE_URL;
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -43,25 +32,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Check for existing token and validate
     const token = localStorage.getItem('token');
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      // TODO: Validate token and fetch user data
-      setLoading(false);
-    } else {
-      setLoading(false);
+    const storedUser = localStorage.getItem('user');
+    
+    if (token && storedUser) {
+      try {
+        const userData = JSON.parse(storedUser);
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        setUser(userData);
+      } catch (error) {
+        console.error('Error parsing stored user:', error);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
     }
+    setLoading(false);
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (credentials: LoginCredentials) => {
     try {
       const response = await axios.post('/api/v1/auth/login', {
-        email,
-        password,
+        username: credentials.username,
+        password: credentials.password,
       });
 
       const { token, user: userData } = response.data.data;
       
       localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(userData));
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
       setUser(userData);
@@ -73,11 +70,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const register = async (data: RegisterData) => {
     try {
-      const response = await axios.post('/api/v1/auth/register', data);
+      // For anonymous users, generate a random username if not provided
+      const registrationData = {
+        ...data,
+        username: data.username || `user_${Date.now()}`,
+        anonymous: data.anonymous ?? !data.email,
+        email: data.email || undefined,
+        displayName: data.displayName || undefined,
+        organization: data.organization || undefined,
+      };
+
+      const response = await axios.post('/api/v1/auth/register', registrationData);
 
       const { token, user: userData } = response.data.data;
       
       localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(userData));
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
       setUser(userData);
@@ -89,6 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     delete axios.defaults.headers.common['Authorization'];
     setUser(null);
   };
