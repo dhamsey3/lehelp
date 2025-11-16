@@ -1,0 +1,6 @@
+# Ignore everything in parent directories
+../../*
+../*
+
+# Except this directory
+!.
