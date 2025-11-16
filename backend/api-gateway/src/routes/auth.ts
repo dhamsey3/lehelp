@@ -32,7 +32,7 @@ const loginSchema = Joi.object({
 });
 
 // POST /api/v1/auth/register - Register new user
-router.post('/register', async (req: Request, res: Response) => {
+router.post('/register', async (req: Request, res: Response, next) => {
   try {
     const { error, value } = registerSchema.validate(req.body);
     
@@ -125,12 +125,12 @@ router.post('/register', async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.error('Registration error:', error);
-    throw error;
+    next(error);
   }
 });
 
 // POST /api/v1/auth/login - Login user
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', async (req: Request, res: Response, next) => {
   try {
     const { error, value } = loginSchema.validate(req.body);
     
@@ -237,12 +237,12 @@ router.post('/login', async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.error('Login error:', error);
-    throw error;
+    next(error);
   }
 });
 
 // POST /api/v1/auth/refresh - Refresh access token
-router.post('/refresh', async (req: Request, res: Response) => {
+router.post('/refresh', async (req: Request, res: Response, next) => {
   try {
     const { refreshToken } = req.body;
 
@@ -295,15 +295,16 @@ router.post('/refresh', async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
-      throw new AuthenticationError('Invalid refresh token');
+      next(new AuthenticationError('Invalid refresh token'));
+    } else {
+      logger.error('Token refresh error:', error);
+      next(error);
     }
-    logger.error('Token refresh error:', error);
-    throw error;
   }
 });
 
 // POST /api/v1/auth/logout - Logout user
-router.post('/logout', async (req: Request, res: Response) => {
+router.post('/logout', async (req: Request, res: Response, next) => {
   try {
     const authHeader = req.headers.authorization;
     
@@ -324,12 +325,12 @@ router.post('/logout', async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.error('Logout error:', error);
-    throw error;
+    next(error);
   }
 });
 
 // GET /api/v1/auth/verify-email/:token - Verify email address
-router.get('/verify-email/:token', async (req: Request, res: Response) => {
+router.get('/verify-email/:token', async (req: Request, res: Response, next) => {
   try {
     // Email verification not required for this version - all users auto-verified
     res.json({
@@ -338,12 +339,12 @@ router.get('/verify-email/:token', async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.error('Email verification error:', error);
-    throw error;
+    next(error);
   }
 });
 
 // POST /api/v1/auth/forgot-password - Request password reset
-router.post('/forgot-password', async (req: Request, res: Response) => {
+router.post('/forgot-password', async (req: Request, res: Response, next) => {
   try {
     // Password reset not available in this version
     res.json({
@@ -352,18 +353,18 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
     });
   } catch (error) {
     logger.error('Forgot password error:', error);
-    throw error;
+    next(error);
   }
 });
 
 // POST /api/v1/auth/reset-password - Reset password with token
-router.post('/reset-password', async (req: Request, res: Response) => {
+router.post('/reset-password', async (req: Request, res: Response, next) => {
   try {
     // Password reset not available in this version
     throw new ValidationError('Password reset not available in this version');
   } catch (error) {
     logger.error('Password reset error:', error);
-    throw error;
+    next(error);
   }
 });
 
