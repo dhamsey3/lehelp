@@ -108,6 +108,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: ./backend/api-gateway
+          file: ./backend/api-gateway/Dockerfile
           push: true
           tags: |
             ghcr.io/${{ github.repository }}/backend:latest
@@ -119,6 +120,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: ./frontend/client-portal
+          file: ./frontend/client-portal/Dockerfile
           push: true
           tags: |
             ghcr.io/${{ github.repository }}/frontend:latest
@@ -130,6 +132,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: ./ai-services
+          file: ./ai-services/Dockerfile
           push: true
           tags: |
             ghcr.io/${{ github.repository }}/ai-service:latest
