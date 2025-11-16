@@ -6,11 +6,7 @@ dotenv.config();
 
 // PostgreSQL connection pool
 // Use DATABASE_URL environment variable
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-  throw new Error('DATABASE_URL environment variable is not set');
-}
+const connectionString = process.env.DATABASE_URL || 'postgresql://localhost/lehelp_dev';
 
 const pool = new Pool({
   connectionString,
