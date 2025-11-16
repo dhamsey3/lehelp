@@ -31,15 +31,20 @@ const initializeServices = async () => {
     // Test database connection
     await pool.query('SELECT NOW()');
     logger.info('PostgreSQL connection verified');
-
-    // Initialize Redis
-    await initRedis();
-    
-    logger.info('All services initialized successfully');
   } catch (error) {
-    logger.error('Failed to initialize services:', error);
+    logger.error('Failed to connect to database:', error);
     process.exit(1);
   }
+
+  // Initialize Redis (optional - for distributed rate limiting)
+  try {
+    await initRedis();
+    logger.info('Redis connected - using distributed rate limiting');
+  } catch (error) {
+    logger.warn('Redis unavailable - using in-memory rate limiting:', error);
+  }
+  
+  logger.info('All required services initialized successfully');
 };
 
 // Security middleware

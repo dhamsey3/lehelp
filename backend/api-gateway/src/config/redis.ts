@@ -11,6 +11,7 @@ export const initRedis = async (): Promise<RedisClientType> => {
     socket: {
       host: process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT || '6379'),
+      connectTimeout: 5000, // 5 second timeout
     },
   };
   
@@ -30,7 +31,13 @@ export const initRedis = async (): Promise<RedisClientType> => {
     logger.info('Redis connected successfully');
   });
 
-  await redisClient.connect();
+  // Add timeout wrapper to prevent hanging
+  const connectPromise = redisClient.connect();
+  const timeoutPromise = new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('Redis connection timeout after 5 seconds')), 5000)
+  );
+  
+  await Promise.race([connectPromise, timeoutPromise]);
   return redisClient;
 };
 
