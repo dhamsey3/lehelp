@@ -21,8 +21,8 @@ const registerSchema = Joi.object({
   password: Joi.string().min(8).required(),
   role: Joi.string().valid('client', 'lawyer', 'activist').required(),
   anonymous: Joi.boolean().default(false),
-  displayName: Joi.string().min(2).max(100),
-  organization: Joi.string().max(200),
+  displayName: Joi.string().min(2).max(100).allow('').optional(),
+  organization: Joi.string().max(200).allow('').optional(),
 });
 
 const loginSchema = Joi.object({

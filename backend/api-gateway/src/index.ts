@@ -25,6 +25,9 @@ dns.setDefaultResultOrder('ipv4first');
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust Render's proxy (required for X-Forwarded-For header)
+app.set('trust proxy', 1);
+
 // Initialize services
 const initializeServices = async () => {
   try {
