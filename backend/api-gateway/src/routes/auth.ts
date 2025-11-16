@@ -57,31 +57,29 @@ router.post('/register', async (req: Request, res: Response) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
     
-    // Generate user ID and verification token
+    // Generate user ID
     const userId = uuidv4();
-    const verificationToken = anonymous ? null : uuidv4();
 
     // Insert user
     await pool.query(
       `INSERT INTO users (
-        id, email, password_hash, role, email_verified, 
-        verification_token, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`,
-      [userId, anonymous ? null : email, hashedPassword, role, anonymous, verificationToken]
+        id, email, password_hash, role, verified, display_name, organization, anonymous
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [userId, anonymous ? null : email, hashedPassword, role, anonymous, displayName || 'Anonymous User', organization, anonymous]
     );
 
     // Create user profile
     await pool.query(
       `INSERT INTO user_profiles (
-        id, user_id, display_name, organization, anonymous, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())`,
-      [uuidv4(), userId, displayName || 'Anonymous User', organization, anonymous]
+        user_id, created_at, updated_at
+      ) VALUES ($1, NOW(), NOW())`,
+      [userId]
     );
 
     // Send verification email if not anonymous
-    if (!anonymous && email && verificationToken) {
+    if (!anonymous && email) {
       try {
-        await emailService.sendVerificationEmail(email, verificationToken);
+        await emailService.sendVerificationEmail(email, userId);
         logger.info(`Verification email sent to ${email}`);
       } catch (emailError) {
         logger.error('Failed to send verification email:', emailError);
@@ -119,10 +117,10 @@ router.post('/register', async (req: Request, res: Response) => {
           displayName: displayName || 'Anonymous User',
           organization,
           anonymous,
-          emailVerified: anonymous,
+          verified: anonymous,
         },
         token,
-        message: anonymous ? 'Account created' : 'Please check your email to verify your account',
+        message: 'Account created successfully',
       },
     });
   } catch (error) {
@@ -144,10 +142,9 @@ router.post('/login', async (req: Request, res: Response) => {
 
     // Retrieve user from database
     const result = await pool.query(
-      `SELECT u.id, u.email, u.password_hash, u.role, u.email_verified, u.account_locked,
-              up.display_name, up.anonymous
+      `SELECT u.id, u.email, u.password_hash, u.role, u.verified, u.status,
+              u.display_name, u.organization, u.anonymous
        FROM users u
-       LEFT JOIN user_profiles up ON u.id = up.user_id
        WHERE u.email = $1`,
       [email]
     );
@@ -158,9 +155,9 @@ router.post('/login', async (req: Request, res: Response) => {
 
     const user = result.rows[0];
 
-    // Check if account is locked
-    if (user.account_locked) {
-      throw new AuthenticationError('Account is locked. Please contact support.');
+    // Check if account is active
+    if (user.status !== 'active') {
+      throw new AuthenticationError('Account is not active. Please contact support.');
     }
 
     // Verify password
@@ -230,7 +227,8 @@ router.post('/login', async (req: Request, res: Response) => {
           email: user.email,
           role: user.role,
           displayName: user.display_name,
-          emailVerified: user.email_verified,
+          organization: user.organization,
+          verified: user.verified,
           anonymous: user.anonymous,
         },
         token,
@@ -265,15 +263,14 @@ router.post('/refresh', async (req: Request, res: Response) => {
 
     // Retrieve user from database
     const result = await pool.query(
-      `SELECT u.id, u.email, u.role, up.display_name
+      `SELECT u.id, u.email, u.role, u.display_name, u.status
        FROM users u
-       LEFT JOIN user_profiles up ON u.id = up.user_id
-       WHERE u.id = $1 AND u.account_locked = false`,
+       WHERE u.id = $1 AND u.status = 'active'`,
       [decoded.id]
     );
 
     if (result.rows.length === 0) {
-      throw new AuthenticationError('User not found or account locked');
+      throw new AuthenticationError('User not found or account not active');
     }
 
     const user = result.rows[0];
@@ -334,35 +331,10 @@ router.post('/logout', async (req: Request, res: Response) => {
 // GET /api/v1/auth/verify-email/:token - Verify email address
 router.get('/verify-email/:token', async (req: Request, res: Response) => {
   try {
-    const { token } = req.params;
-
-    const result = await pool.query(
-      'SELECT id, email FROM users WHERE verification_token = $1 AND email_verified = false',
-      [token]
-    );
-
-    if (result.rows.length === 0) {
-      throw new ValidationError('Invalid or expired verification token');
-    }
-
-    const user = result.rows[0];
-
-    // Mark email as verified
-    await pool.query(
-      'UPDATE users SET email_verified = true, verification_token = NULL WHERE id = $1',
-      [user.id]
-    );
-
-    // Log activity
-    await pool.query(
-      `INSERT INTO activity_logs (id, user_id, action, resource_type, created_at)
-       VALUES ($1, $2, $3, $4, NOW())`,
-      [uuidv4(), user.id, 'email_verified', 'user']
-    );
-
+    // Email verification not required for this version - all users auto-verified
     res.json({
       status: 'success',
-      message: 'Email verified successfully',
+      message: 'Email verification complete',
     });
   } catch (error) {
     logger.error('Email verification error:', error);
@@ -373,41 +345,10 @@ router.get('/verify-email/:token', async (req: Request, res: Response) => {
 // POST /api/v1/auth/forgot-password - Request password reset
 router.post('/forgot-password', async (req: Request, res: Response) => {
   try {
-    const { email } = req.body;
-
-    if (!email) {
-      throw new ValidationError('Email is required');
-    }
-
-    const result = await pool.query(
-      'SELECT id FROM users WHERE email = $1',
-      [email]
-    );
-
-    if (result.rows.length > 0) {
-      const user = result.rows[0];
-      const resetToken = uuidv4();
-
-      // Store reset token with 1-hour expiration
-      await pool.query(
-        `UPDATE users 
-         SET password_reset_token = $1, password_reset_expires = NOW() + INTERVAL '1 hour'
-         WHERE id = $2`,
-        [resetToken, user.id]
-      );
-
-      // Send password reset email
-      try {
-        await emailService.sendPasswordResetEmail(email, resetToken);
-      } catch (emailError) {
-        logger.error('Failed to send password reset email:', emailError);
-      }
-    }
-
-    // Always return success to prevent email enumeration
+    // Password reset not available in this version
     res.json({
       status: 'success',
-      message: 'If the email exists, a password reset link has been sent',
+      message: 'Password reset not available in this version',
     });
   } catch (error) {
     logger.error('Forgot password error:', error);
@@ -418,54 +359,8 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
 // POST /api/v1/auth/reset-password - Reset password with token
 router.post('/reset-password', async (req: Request, res: Response) => {
   try {
-    const { token, newPassword } = req.body;
-
-    if (!token || !newPassword) {
-      throw new ValidationError('Token and new password are required');
-    }
-
-    if (newPassword.length < 8) {
-      throw new ValidationError('Password must be at least 8 characters');
-    }
-
-    const result = await pool.query(
-      `SELECT id FROM users 
-       WHERE password_reset_token = $1 
-       AND password_reset_expires > NOW()`,
-      [token]
-    );
-
-    if (result.rows.length === 0) {
-      throw new ValidationError('Invalid or expired reset token');
-    }
-
-    const user = result.rows[0];
-
-    // Hash new password
-    const hashedPassword = await bcrypt.hash(newPassword, 12);
-
-    // Update password and clear reset token
-    await pool.query(
-      `UPDATE users 
-       SET password_hash = $1, 
-           password_reset_token = NULL, 
-           password_reset_expires = NULL,
-           updated_at = NOW()
-       WHERE id = $2`,
-      [hashedPassword, user.id]
-    );
-
-    // Log activity
-    await pool.query(
-      `INSERT INTO activity_logs (id, user_id, action, resource_type, created_at)
-       VALUES ($1, $2, $3, $4, NOW())`,
-      [uuidv4(), user.id, 'password_reset', 'user']
-    );
-
-    res.json({
-      status: 'success',
-      message: 'Password reset successfully',
-    });
+    // Password reset not available in this version
+    throw new ValidationError('Password reset not available in this version');
   } catch (error) {
     logger.error('Password reset error:', error);
     throw error;
