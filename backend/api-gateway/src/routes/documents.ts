@@ -131,7 +131,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
 
     // Get document metadata and verify access
     const result = await pool.query(
-      `SELECT d.*, c.client_id, c.lawyer_id
+      `SELECT d.*, c.client_id, c.assigned_lawyer_id
        FROM documents d
        LEFT JOIN cases c ON d.case_id = c.id
        WHERE d.id = $1`,
@@ -151,7 +151,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     const hasAccess = 
       document.uploaded_by === userId ||
       document.client_id === userId ||
-      document.lawyer_id === userId;
+      document.assigned_lawyer_id === userId;
 
     if (!hasAccess) {
       return res.status(403).json({

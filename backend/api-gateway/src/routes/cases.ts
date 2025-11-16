@@ -44,13 +44,11 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
 
     let query = `
       SELECT c.id, c.title, c.case_type, c.status, c.urgency, c.created_at,
-             c.location, c.anonymous, u.id as client_id, up.display_name as client_name,
-             l.id as lawyer_id, lp.display_name as lawyer_name
+             c.location, c.anonymous, u.id as client_id, u.display_name as client_name,
+             l.id as lawyer_id, l.display_name as lawyer_name
       FROM cases c
       LEFT JOIN users u ON c.client_id = u.id
-      LEFT JOIN user_profiles up ON u.id = up.user_id
-      LEFT JOIN users l ON c.lawyer_id = l.id
-      LEFT JOIN user_profiles lp ON l.id = lp.user_id
+      LEFT JOIN users l ON c.assigned_lawyer_id = l.id
       WHERE 1=1
     `;
 
@@ -63,7 +61,7 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
       params.push(userId);
       paramCount++;
     } else if (userRole === 'lawyer') {
-      query += ` AND (c.lawyer_id = $${paramCount} OR c.status = 'pending_assignment')`;
+      query += ` AND (c.assigned_lawyer_id = $${paramCount} OR c.status = 'pending_assignment')`;
       params.push(userId);
       paramCount++;
     }
@@ -136,13 +134,11 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
 
     const result = await pool.query(
       `SELECT c.*, 
-              json_build_object('id', u.id, 'displayName', up.display_name, 'anonymous', up.anonymous) as client,
-              json_build_object('id', l.id, 'displayName', lp.display_name, 'email', l.email) as lawyer
+              json_build_object('id', u.id, 'displayName', u.display_name, 'anonymous', u.anonymous) as client,
+              json_build_object('id', l.id, 'displayName', l.display_name, 'email', l.email) as lawyer
        FROM cases c
        LEFT JOIN users u ON c.client_id = u.id
-       LEFT JOIN user_profiles up ON u.id = up.user_id
-       LEFT JOIN users l ON c.lawyer_id = l.id
-       LEFT JOIN user_profiles lp ON l.id = lp.user_id
+       LEFT JOIN users l ON c.assigned_lawyer_id = l.id
        WHERE c.id = $1`,
       [id]
     );
@@ -157,7 +153,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     const hasAccess = 
       userRole === 'admin' ||
       caseData.client_id === userId ||
-      caseData.lawyer_id === userId ||
+      caseData.assigned_lawyer_id === userId ||
       (userRole === 'lawyer' && caseData.status === 'pending_assignment');
 
     if (!hasAccess) {
@@ -228,7 +224,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
     await pool.query(
       `INSERT INTO cases (
         id, title, description, case_type, status, urgency,
-        location, client_id, anonymous, ai_triage_result, created_at, updated_at
+        location, client_id, anonymous, ai_classification, created_at, updated_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())`,
       [
         caseId,
@@ -321,7 +317,7 @@ router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
 
     // Check authorization
     const caseResult = await pool.query(
-      'SELECT client_id, lawyer_id, status FROM cases WHERE id = $1',
+      'SELECT client_id, assigned_lawyer_id, status FROM cases WHERE id = $1',
       [id]
     );
 
@@ -332,7 +328,7 @@ router.patch('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     const caseData = caseResult.rows[0];
     const canUpdate = 
       caseData.client_id === userId || 
-      caseData.lawyer_id === userId ||
+      caseData.assigned_lawyer_id === userId ||
       req.user?.role === 'admin';
 
     if (!canUpdate) {
@@ -432,15 +428,15 @@ router.post('/:id/assign', authenticate, async (req: AuthRequest, res: Response)
     // Assign lawyer
     await pool.query(
       `UPDATE cases 
-       SET lawyer_id = $1, status = 'assigned', updated_at = NOW()
+       SET assigned_lawyer_id = $1, status = 'assigned', updated_at = NOW()
        WHERE id = $2`,
       [lawyerId, id]
     );
 
     // Create case assignment record
     await pool.query(
-      `INSERT INTO case_assignments (id, case_id, lawyer_id, assigned_by, assigned_at)
-       VALUES ($1, $2, $3, $4, NOW())`,
+      `INSERT INTO case_assignments (id, case_id, lawyer_id, assigned_by, status, created_at)
+       VALUES ($1, $2, $3, $4, 'pending', NOW())`,
       [uuidv4(), id, lawyerId, userId]
     );
 
