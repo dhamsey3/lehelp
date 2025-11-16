@@ -11,7 +11,8 @@ export const initRedis = async (): Promise<RedisClientType> => {
     socket: {
       host: process.env.REDIS_HOST || 'localhost',
       port: parseInt(process.env.REDIS_PORT || '6379'),
-      connectTimeout: 5000, // 5 second timeout
+      connectTimeout: 5000,
+      reconnectStrategy: false, // Disable automatic reconnection
     },
   };
   
@@ -23,22 +24,33 @@ export const initRedis = async (): Promise<RedisClientType> => {
   
   redisClient = createClient(redisConfig);
 
-  redisClient.on('error', (err) => {
-    logger.error('Redis Client Error:', err);
+  // Suppress error logging - we'll handle errors at the connection level
+  redisClient.on('error', () => {
+    // Silent - errors will be caught by the connect promise
   });
 
   redisClient.on('connect', () => {
     logger.info('Redis connected successfully');
   });
 
-  // Add timeout wrapper to prevent hanging
-  const connectPromise = redisClient.connect();
-  const timeoutPromise = new Promise((_, reject) => 
-    setTimeout(() => reject(new Error('Redis connection timeout after 5 seconds')), 5000)
-  );
-  
-  await Promise.race([connectPromise, timeoutPromise]);
-  return redisClient;
+  try {
+    // Add timeout wrapper to prevent hanging
+    const connectPromise = redisClient.connect();
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Redis connection timeout after 5 seconds')), 5000)
+    );
+    
+    await Promise.race([connectPromise, timeoutPromise]);
+    return redisClient;
+  } catch (error) {
+    // Clean up the client on failure
+    try {
+      await redisClient.disconnect();
+    } catch (e) {
+      // Ignore disconnect errors
+    }
+    throw error;
+  }
 };
 
 export const getRedisClient = (): RedisClientType => {
