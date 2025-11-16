@@ -35,10 +35,10 @@ export const RegisterForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement> | any) => {
     const name = e.target.name as string;
     const value = e.target.type === 'checkbox' 
-      ? (e.target as HTMLInputElement).checked 
+      ? e.target.checked 
       : e.target.value;
     
     setFormData({
