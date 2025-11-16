@@ -5,6 +5,7 @@ import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import dns from 'dns';
 import { logger } from './utils/logger';
 import { errorHandler } from './middleware/errorHandler';
 import { authRouter } from './routes/auth';
@@ -17,6 +18,9 @@ import { pool, closeDatabase } from './config/database';
 import { initRedis, closeRedis } from './config/redis';
 
 dotenv.config();
+
+// Force IPv4 DNS resolution for Supabase compatibility
+dns.setDefaultResultOrder('ipv4first');
 
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
