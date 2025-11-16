@@ -13,7 +13,7 @@
     "dev:frontend": "cd frontend/client-portal && npm run dev",
     "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:ai\"",
     "dev:ai": "cd ai-services && python main.py",
-    "build": "echo 'Use workspace-specific build commands'",
+    "build": "npm run build:backend && npm run build:frontend",
     "build:backend": "npm run --workspaces build",
     "build:frontend": "cd frontend && npm run build",
     "test": "npm run test:unit && npm run test:integration",
@@ -34,7 +34,12 @@
     "security:check": "snyk test",
     "prepare": "node -e \"try { require('husky').install() } catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e }\""
   },
-  "workspaces": [],
+  "workspaces": [
+    "backend/*",
+    "frontend/*",
+    "mobile/*",
+    "shared/*"
+  ],
   "keywords": [
     "human-rights",
     "legal-aid",
