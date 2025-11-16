@@ -97,6 +97,20 @@ app.use(morgan('combined', {
 }));
 
 // Health check endpoint
+// Root route
+app.get('/', (req: Request, res: Response) => {
+  res.status(200).json({
+    name: 'LEHELP API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/health',
+      api: '/api/v1',
+      docs: 'https://github.com/dhamsey3/lehelp',
+    },
+  });
+});
+
 app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({
     status: 'healthy',
