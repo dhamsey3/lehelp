@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Card,
@@ -12,51 +12,58 @@ import {
   Container,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import AddIcon from '@mui/icons-material/Add';
 import GavelIcon from '@mui/icons-material/Gavel';
+import { apiService } from '../services/api.service';
+import { Case, CaseUrgency, CaseStatus } from '../types/case.types';
+import { useAuth } from '../contexts/AuthContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
-
-interface Case {
-  id: string;
-  title: string;
-  case_type: string;
-  status: string;
-  urgency: string;
-  created_at: string;
+type DashboardCase = Case & {
   lawyer_name?: string;
-}
+  case_type?: string;
+  created_at?: string;
+};
 
 export const CaseDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [cases, setCases] = useState<Case[]>([]);
+  const { user } = useAuth();
+  const [cases, setCases] = useState<DashboardCase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
+    let isMounted = true;
+
+    const fetchCases = async () => {
+      setLoading(true);
+      setError('');
+
+      try {
+        const response = await apiService.cases.getAll();
+        if (!isMounted) return;
+
+        const caseData = response.data.data ?? [];
+        setCases(caseData);
+      } catch (err: any) {
+        if (!isMounted) return;
+        const message =
+          err?.response?.data?.message || err?.message || 'Failed to load cases';
+        setError(message);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
     fetchCases();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const fetchCases = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}/cases`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      setCases(response.data.data.cases);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to load cases');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getUrgencyColor = (urgency: string) => {
+  const getUrgencyColor = (urgency: CaseUrgency) => {
     switch (urgency) {
       case 'critical':
         return 'error';
@@ -69,7 +76,7 @@ export const CaseDashboard: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: CaseStatus) => {
     switch (status) {
       case 'assigned':
         return 'success';
@@ -84,6 +91,23 @@ export const CaseDashboard: React.FC = () => {
     }
   };
 
+  const role = user?.role ?? 'client';
+
+  const emptyStateCta = useMemo(
+    () =>
+      role === 'client' && (
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => navigate('/cases/new')}
+          sx={{ mt: 2 }}
+        >
+          Submit Your First Case
+        </Button>
+      ),
+    [navigate, role]
+  );
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
@@ -96,10 +120,10 @@ export const CaseDashboard: React.FC = () => {
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
-          {user.role === 'lawyer' ? 'My Cases' : 'My Legal Cases'}
+          {role === 'lawyer' ? 'My Cases' : 'My Legal Cases'}
         </Typography>
-        
-        {user.role === 'client' && (
+
+        {role === 'client' && (
           <Button
             variant="contained"
             startIcon={<AddIcon />}
@@ -123,23 +147,14 @@ export const CaseDashboard: React.FC = () => {
             <Typography variant="h6" color="text.secondary" gutterBottom>
               No cases yet
             </Typography>
-            {user.role === 'client' && (
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => navigate('/cases/new')}
-                sx={{ mt: 2 }}
-              >
-                Submit Your First Case
-              </Button>
-            )}
+            {emptyStateCta}
           </CardContent>
         </Card>
       ) : (
         <Grid container spacing={3}>
           {cases.map((caseItem) => (
             <Grid item xs={12} md={6} key={caseItem.id}>
-              <Card 
+              <Card
                 sx={{ 
                   cursor: 'pointer',
                   transition: 'transform 0.2s',
@@ -170,17 +185,20 @@ export const CaseDashboard: React.FC = () => {
                   </Typography>
 
                   <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Type: {caseItem.case_type.replace('_', ' ')}
+                    Type:{' '}
+                    {(caseItem.category || caseItem.case_type || 'unknown')
+                      .replaceAll('_', ' ')
+                      .toUpperCase()}
                   </Typography>
 
-                  {caseItem.lawyer_name && (
+                  {(caseItem.lawyer_name || (caseItem as any).assignedLawyerId) && (
                     <Typography variant="body2" color="text.secondary">
-                      Assigned to: {caseItem.lawyer_name}
+                      Assigned to: {caseItem.lawyer_name || (caseItem as any).assignedLawyerId}
                     </Typography>
                   )}
 
                   <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-                    Created: {new Date(caseItem.created_at).toLocaleDateString()}
+                    Created: {new Date(caseItem.createdAt || caseItem.created_at || new Date()).toLocaleDateString()}
                   </Typography>
                 </CardContent>
               </Card>
