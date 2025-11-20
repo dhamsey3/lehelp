@@ -19,9 +19,8 @@ import {
   Checkbox,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+import { apiService } from '../services/api.service';
+import { CaseCategory, CaseSubmission, CaseUrgency } from '../types/case.types';
 
 const steps = ['Case Details', 'Location', 'Review & Submit'];
 
@@ -80,20 +79,27 @@ export const CaseSubmissionForm: React.FC = () => {
     setError('');
 
     try {
-      const token = localStorage.getItem('token');
-      
-      const response = await axios.post(
-        `${API_URL}/cases`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const location = [
+        formData.location.city,
+        formData.location.region,
+        formData.location.country,
+      ]
+        .filter(Boolean)
+        .join(', ');
+
+      const payload: CaseSubmission = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        category: (formData.caseType as CaseCategory) || 'other',
+        urgency: (formData.urgency as CaseUrgency) || 'medium',
+        location: location || undefined,
+        anonymous: formData.anonymous,
+      };
+
+      const response = await apiService.cases.create(payload);
 
       setSuccess(true);
-      
+
       // Redirect to case details after 2 seconds
       setTimeout(() => {
         navigate(`/cases/${response.data.data.case.id}`);

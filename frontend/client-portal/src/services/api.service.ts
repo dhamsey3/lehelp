@@ -6,7 +6,8 @@ import { Message, SendMessageData } from '../types/message.types';
 import { Document, UploadDocumentData } from '../types/document.types';
 
 // Configure axios defaults
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://lehelp-backend.onrender.com';
+export const API_BASE_URL =
+  import.meta.env.VITE_API_URL || 'https://lehelp-backend.onrender.com';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
